@@ -20,44 +20,35 @@ class Engine:
 
         self._board: Board = board
         self._players: Tuple[Player, Player] = players
-        self._board.add_pieces(players)
-        self._running: bool = False     
+        self._board.add_pieces([p.name for p in players])
+        self._running: bool = False 
+        self._first_player: Optional[Player] = None    
     
     def __call__(self, first_player:Optional[Player]=None) -> Optional[Player]:
             """Play the game. The game is over when one player has no more pieces to place
             on the board. The winner is the player with the larger number of pieces on the 
             board. The function returns the winner of the game or None if the game ends in a tie.
             """
-            if first_player is None:
-                first_player = random.choice(self._players)
-            self._current_player = first_player
+            self._current_player = self.pick_first_player(first_player)
             self._running = True
-            while not self.game_over() and self._running:
-                state = self.get_player_state(self._current_player)
-                if state == PlayerState.PLACING:
-                    move = self._current_player(self._board.clone(), state)
-                    self.make_place_move(move, self._current_player)
+            while self._running:
+                if (state := self.get_player_state(self._current_player)) == PlayerState.PLACING:
+                    self.placing_move(self._current_player(self._board.clone(), state), self._current_player)
                     while (state := self.get_player_state(self._current_player)) == PlayerState.KILLING:
-                        move = self._current_player(self._board.clone(), state)
-                        self.make_kill_move(move, self._current_player)
-                        if self.game_over():
-                            self._running = False
-                            self._board.winner = self._current_player
-                            break
+                        self.killing_move(self._current_player(self._board.clone(), state), self._current_player)                        
                 else:
-                    raise NotImplementedError(f"In phase 1 of the project, 
-                                                only placing and killing moves are supported !")
+                    print(f'No more pieces to place ... ending the game !')
+                    break
                 self.switch_player()
             
             self._running = False
-
-            if len(self._pieces['placed'][self._players[0].name]) > \
-                len(self._pieces['placed'][self._players[1].name]):
+            if len(self.board.ready_pieces[self._players[0].name]) > \
+                len(self._board._pieces['placed'][self._players[1].name]):
                 print(f'Player {self._players[0].name} wins !')
                 self._board.winner = self._players[0]
                 return self._players[0]
-            elif len(self._pieces['placed'][self._players[0].name]) < \
-                len(self._pieces['placed'][self._players[1].name]):
+            elif len(self._board._pieces['placed'][self._players[0].name]) < \
+                len(self._board._pieces['placed'][self._players[1].name]):
                 print(f'Player {self._players[1].name} wins !')
                 self._board.winner = self._players[1]
                 return self._players[1]
@@ -65,6 +56,12 @@ class Engine:
                 print('Tie !')
                 self._board.winner = None
                 return None
+
+    def pick_first_player(self, first_player):
+        if first_player is None:
+                first_player = random.choice(self._players)
+        self._first_player = first_player
+        return self._first_player
 
     def get_player_state(self, player:Player):
         mills = self._board.player_mills(player)
@@ -87,15 +84,15 @@ class Engine:
         
         raise RuntimeError(f'Unknown player state for {player}')
 
-    def make_place_move(self, cell:Tuple[int, int, int], player:Player):
+    def placing_move(self, cell:Tuple[int, int, int], player:Player):
         if self.get_player_state(player) != PlayerState.PLACING:
             raise ValueError(f"Player {player} is not in placing state !")
         try:
             self._board.place(cell, player)
         except ValueError as e:
-            raise ValueError(f"Invalid move: placing {cell} ... GAME OVER !")
+            raise ValueError(f"Invalid move: placing {cell} ... GAME OVER !!!")
         
-    def make_kill_move(self, cell:Tuple[int, int, int], player:Player):
+    def killing_move(self, cell:Tuple[int, int, int], player:Player):
         mills = self._board.player_mills(player)
         active = [mill for mill in mills 
                   if mill.still_valid and not mill.utilized]
@@ -110,6 +107,7 @@ class Engine:
             self._board.kill(cell, active[0])
         except:
             raise ValueError(f"Invalid move: killing {cell} ... GAME OVER !")
+
 
     def game_over(self):
         if len(self._pieces['ready'][self._players[0].name]) == 0 and \

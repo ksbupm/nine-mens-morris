@@ -86,6 +86,22 @@ class Board:
         self._pieces[PieceState.DEAD][players[0]] = []
         self._pieces[PieceState.DEAD][players[1]] = []
 
+    @property
+    def ready_pieces(self) -> Dict[str, List[Piece]]:
+        return self._pieces[PieceState.READY]
+    
+    @property
+    def placed_pieces(self) -> Dict[str, List[Piece]]:
+        return self._pieces[PieceState.PLACED]
+    
+    @property
+    def dead_pieces(self) -> Dict[str, List[Piece]]:
+        return self._pieces[PieceState.DEAD]
+    
+    @property
+    def pieces(self) -> Dict[PieceState, Dict[str, List[Piece]]]:
+        return self._pieces
+
     def reset(self):
         for cell in self._cells:
             cell.reset()
