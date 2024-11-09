@@ -47,8 +47,8 @@ class Engine:
                 print(f'Player {self._players[0].name} wins !')
                 self._board.winner = self._players[0]
                 return self._players[0]
-            elif len(self._board._pieces['placed'][self._players[0].name]) < \
-                len(self._board._pieces['placed'][self._players[1].name]):
+            elif len(self.board.placed_pieces[self._players[0].name]) < \
+                len(self.board.placed_pieces[self._players[1].name]):
                 print(f'Player {self._players[1].name} wins !')
                 self._board.winner = self._players[1]
                 return self._players[1]
@@ -70,11 +70,11 @@ class Engine:
         if len(active) > 0:
             return PlayerState.KILLING
         
-        ready = self._pieces['ready'][player.name]
+        ready = self.board.ready_pieces[player.name]
         if len(ready) > 0:
             return PlayerState.PLACING
         
-        placed = self._pieces['placed'][player.name]
+        placed = self.board.placed_pieces[player.name]
         if len(placed) > 3:
             return PlayerState.MOVING
         elif len(placed) == 3:
@@ -110,8 +110,8 @@ class Engine:
 
 
     def game_over(self):
-        if len(self._pieces['ready'][self._players[0].name]) == 0 and \
-           len(self._pieces['ready'][self._players[1].name]) == 0:
+        if len(self.board.ready_pieces[self._players[0].name]) == 0 and \
+           len(self.board.ready_pieces[self._players[1].name]) == 0:
             return True
         return False
 

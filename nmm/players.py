@@ -4,7 +4,7 @@ from __future__ import annotations  # Enables deferred type hint evaluation
 import random
 from typing import Optional, List, Tuple, Union, Self, Sequence, Set, TYPE_CHECKING
 from enum import Enum, auto
-
+from abc import ABC, abstractmethod
 from nmm.dtypes import NamedPlayer
 from nmm.boards import Board, Cell
 
@@ -19,10 +19,11 @@ class PlayerState(Enum):
     WINNING = "Winning"
 
 
-class Player(NamedPlayer):
+class Player(NamedPlayer, ABC):
     def __init__(self, name:str):
         self.name = name
 
+    @abstractmethod
     def __call__(self, board:Board, state:PlayerState) -> Tuple[int, int, int]:
         raise NotImplementedError()
 
@@ -59,5 +60,3 @@ class CMDPlayer(Player):
             return tuple(map(int, input().split()))
         
         raise ValueError(f"Invalid player state: {state}")
-
-

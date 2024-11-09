@@ -14,11 +14,11 @@ class TestEngine(unittest.TestCase):
         self.engine = Engine(players=self.players, board=self.board)
 
     def test_initialization(self):
-        for _, pieces in self.engine._pieces['ready'].items():
+        for _, pieces in self.engine.board.ready_pieces.items():
             self.assertEqual(len(pieces), 9)
-        for _, pieces in self.engine._pieces['placed'].items():
+        for _, pieces in self.engine.board.placed_pieces.items():
             self.assertEqual(len(pieces), 0)
-        for _, pieces in self.engine._pieces['dead'].items():
+        for _, pieces in self.engine.board.dead_pieces.items():
             self.assertEqual(len(pieces), 0)
 
 
@@ -42,8 +42,7 @@ class TestEngine(unittest.TestCase):
 
     def test_player_state_4(self):
         with self.assertRaises(NotImplementedError):
-            pieces = self.engine._pieces
-            pieces['placed'][self.players[0].name] = pieces['ready'][self.players[0].name]
-            pieces['ready'][self.players[0].name] = []
+            self.engine.board.placed_pieces[self.players[0].name] = self.engine.board.ready_pieces[self.players[0].name]
+            self.engine.board.ready_pieces[self.players[0].name] = []
             self.assertEqual(self.engine.get_player_state(self.players[0]), PlayerState.MOVING)
 
