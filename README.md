@@ -16,3 +16,4 @@ Game engine with minimal UI for the Nine Men's Morris Game
 1. Activate the new evironment using `conda activate ai381`
 1. Install `poetry` using `pip install poetry`
 1. Install the game `poetry install`
+1. YOU'RE READY TO GO !!!
