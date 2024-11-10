@@ -36,3 +36,12 @@ python -m nmm.ui.game
 python -m nmm.ui.game AIHu
 ```
 
+
+## Implement your AI Agent:
+
+1. Implement your AI agent in the `nmm/agent.py` file.
+1. Try it out by running:
+
+```python
+python -m nmm.ui.game AIAgent
+```
