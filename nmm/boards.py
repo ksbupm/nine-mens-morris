@@ -184,6 +184,10 @@ class Board:
 
     def get_player_cells(self, player:str) -> List[Cell]:
         return [cell for cell in self._cells if cell.occupant == player]
+    
+    def get_other_player_cells(self, player:str) -> List[Cell]:
+        return [cell for cell in self._cells 
+                if not cell.is_empty and cell.occupant != player]
 
     @property
     def is_empty(self) -> bool:

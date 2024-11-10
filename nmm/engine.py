@@ -22,7 +22,8 @@ class Engine:
         self._players: Tuple[Player, Player] = players
         self._board.add_pieces([p.name for p in players])
         self._running: bool = False 
-        self._first_player: Optional[Player] = None    
+        self._first_player: Optional[Player] = None   
+        self._current_player: Optional[Player] = None
     
     def __call__(self, first_player:Optional[Player]=None) -> Optional[Player]:
             """Play the game. The game is over when one player has no more pieces to place
@@ -44,16 +45,13 @@ class Engine:
             self._running = False
             if len(self.board.ready_pieces[self._players[0].name]) > \
                 len(self._board._pieces['placed'][self._players[1].name]):
-                print(f'Player {self._players[0].name} wins !')
                 self._board.winner = self._players[0]
                 return self._players[0]
             elif len(self.board.placed_pieces[self._players[0].name]) < \
                 len(self.board.placed_pieces[self._players[1].name]):
-                print(f'Player {self._players[1].name} wins !')
                 self._board.winner = self._players[1]
                 return self._players[1]
             else:
-                print('Tie !')
                 self._board.winner = None
                 return None
 
@@ -110,37 +108,53 @@ class Engine:
 
 
     def game_over(self):
-        if len(self.board.ready_pieces[self._players[0].name]) == 0 and \
-           len(self.board.ready_pieces[self._players[1].name]) == 0:
+        if len(set([self.get_player_state(player) for player in self._players]) & 
+               {PlayerState.PLACING, PlayerState.KILLING}) == 0:
             return True
         return False
+    
+
+    def get_winner(self):
+        if len(self.board.dead_pieces[self._players[0].name]) < \
+            len(self.board.dead_pieces[self._players[1].name]):
+            self._board.winner = self._players[0]
+            return self._players[0]
+        elif len(self.board.dead_pieces[self._players[0].name]) > \
+            len(self.board.dead_pieces[self._players[1].name]):
+            self._board.winner = self._players[1]
+            return self._players[1]
+        else:
+            self._board.winner = None
+            return None
+
 
     @property
     def board(self):
         return self._board
 
+    @property
+    def players(self):
+        return self._players
     
-
-
-
-
-
+    @property
+    def first_player(self):
+        return self._first_player
     
-
-
-
-
+    @first_player.setter
+    def first_player(self, player:Player):
+        self._first_player = player
     
-    # def set_winner(self):
-    #     raise NotImplementedError()
-
-    
-    # def reset_game(self):
-    #     raise NotImplementedError()
-
     @property
     def current_player(self):
         return self._current_player
+
+    @property
+    def current_player(self):
+        return self._current_player 
+
+    @current_player.setter
+    def current_player(self, player:Player):
+        self._current_player = player
 
     @property
     def running(self):
@@ -152,3 +166,10 @@ class Engine:
     def other_player(self, player:Player):
         return self._players[0] if player == self._players[1] \
             else self._players[1]
+
+    # def set_winner(self):
+    #     raise NotImplementedError()
+
+    
+    # def reset_game(self):
+    #     raise NotImplementedError()

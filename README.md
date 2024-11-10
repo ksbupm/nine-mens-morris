@@ -17,3 +17,22 @@ Game engine with minimal UI for the Nine Men's Morris Game
 1. Install `poetry` using `pip install poetry`
 1. Install the game `poetry install`
 1. YOU'RE READY TO GO !!!
+
+
+
+## Run the UI:
+
+1. Activate the environment using `conda activate ai381`
+
+2. Run in the terminal:
+
+```python
+python -m nmm.ui.game
+```
+
+3. Try out the human vs human mode using:
+
+```python
+python -m nmm.ui.game AIHu
+```
+
