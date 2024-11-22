@@ -27,7 +27,7 @@ Game engine with minimal UI for the Nine Men's Morris Game
 2. Run in the terminal:
 
 ```python
-python -m nmm.ui.game
+python -m nmm.ui
 ```
 
 3. Try out the human vs human mode using:
