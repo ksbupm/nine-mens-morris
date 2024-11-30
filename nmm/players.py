@@ -39,7 +39,13 @@ class Player(NamedPlayer, ABC):
     """
 
     def __init__(self, name:str):
-        self._name:str = name
+        if not isinstance(name, str):
+            raise TypeError(f"Player name must be a string, not {type(name).__name__}")
+        
+        if not name:
+            raise ValueError("Player name cannot be empty")
+        
+        super().__setattr__("_name", name)
 
     @abstractmethod
     def play(self, board:Board, state:PlayerState) -> Tuple[int, int, int]:
@@ -64,20 +70,20 @@ class Player(NamedPlayer, ABC):
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, self.__class__):
-            return self._name == value._name
+            return self.name == value.name
         elif isinstance(value, str):
-            return self._name == value
+            return self.name == value
         else:
             raise TypeError(f"Cannot compare {self.__class__.__name__} with {value.__class__.__name__}")
     
     def __hash__(self) -> int:
-        return hash(self._name)
+        return hash(self.name)
 
     def __str__(self) -> str:
-        return self._name
+        return self.name
     
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self._name})"
+        return self.name
     
     def clone(self) -> Self:
         return self.__class__(self._name)
