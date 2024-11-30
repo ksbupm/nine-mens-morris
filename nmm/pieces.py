@@ -1,6 +1,7 @@
 from __future__ import annotations
+import copy
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 from nmm import Cell
 from nmm.dtypes import NamedPlayer
 
@@ -31,13 +32,24 @@ class Piece():
     A piece can be cloned using the `clone` method, which returns a deep copy of the piece.
 
     """
-    def __init__(self, owner:str, _id:int, cell:Optional[Cell]=None):
+    def __init__(self, 
+                 owner:str, 
+                 _id:int, 
+                 state:PieceState=PieceState.READY,
+                 cell:Optional[Union[Cell, tuple[int, int, int]]]=None):
         assert owner is not None, 'Piece must have an owner !'
         assert isinstance(owner, (str, NamedPlayer)), \
             'Piece owner must be a string (name of the player) !'
+        assert isinstance(_id, int), 'Piece id must be an integer !'
+        assert _id >= 0, 'Piece id must be a non-negative integer !'
+        assert isinstance(state, PieceState), 'Piece state must be a valid PieceState !'
+        if not isinstance(cell, Cell) and isinstance(cell, tuple):
+            cell = Cell(*cell)
+        assert cell is None or isinstance(cell, Cell), 'Piece cell must be a valid Cell or None !'
+        
         self._id:int = _id
         self._owner:str = owner if isinstance(owner, str) else owner.name
-        self._state:PieceState = PieceState.READY
+        self._state:PieceState = state
         self._cell:Optional[Cell] = cell
 
     @property
@@ -60,17 +72,24 @@ class Piece():
     def cell(self, value:Optional[Cell]):
         self._cell = value
 
-    def clone(self):
-        return Piece(str(self.owner), self._id, self.cell)
+    def clone(self, cell:Optional[Cell]=None):
+        """Return a deep copy of the piece.
+        *Warning: The cell is not cloned, it is set to the given cell (or `None` if not provided).*
+        """
+        piece = copy.deepcopy(self)
+        return Piece(owner=piece.owner, 
+                     _id=piece._id, 
+                     state=piece.state, 
+                     cell=cell)
 
     def __repr__(self):
         return str(self) 
     
     def __str__(self):
-        return f'Piece {self._id:1d} ' \
-               f'owned by {self.owner} ' \
-               f'in state {self.state} ' \
-               f'located at {self.cell}'
+        return f'Piece {self._id:1d} '  + \
+               f'owned by {self.owner} ' + \
+               f'in state {self.state} ' + \
+               (f'located at {self.cell}' if self.cell is not None else "")
     
     def __hash__(self):
         return hash((self.owner, self._id))
