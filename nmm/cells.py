@@ -19,12 +19,13 @@ class Cell:
 
     If board is indexed as `board[x][y][z]` or as `board[x, y, z]`, it returns an object of this class `Cell`.
     """
-    def __init__(self, x, y, z):
+    def __init__(self, x:int, y:int, z:int, 
+                 occupant:Optional[Union[str, NamedPlayer]]=None):
         self.x = x
         self.y = y
         self.z = z
 
-        self._occupant: Optional[str] = None
+        self._occupant: Optional[str] = occupant
         self._neighbors = dict(right=None, left=None,
                                upper=None, lower=None,
                                outer=None, inner=None)
@@ -79,7 +80,6 @@ class Cell:
     def is_empty(self) -> bool:
         return self._occupant is None
 
-
     def __eq__(self, value:Optional[Union[Self, Tuple[int, int, int]]]):
         if isinstance(value, self.__class__):
            return np.array_equal(self.index, value.index)
@@ -90,13 +90,13 @@ class Cell:
         return False
 
     def __hash__(self):
-        return hash("".join([str(x) for x in self.index]))
+        return hash((self.x, self.y, self.z))
 
     def __str__(self):
         return "[" + ",".join([str(x) for x in self.index]) + "]"
 
     def __repr__(self):
-        return self.__str__()
+        return str(self)
 
     def __getitem__(self, key:int):
         return self.index[key]
