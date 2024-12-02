@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Tuple, Optional, Union, Self, TYPE_CHECKING
+from collections import defaultdict
 import numpy as np
 
 from nmm.dtypes import NamedPlayer
@@ -55,7 +56,11 @@ class Cell:
 
     @property
     def neighbors(self) -> dict:
-        return self._neighbors
+        neighbors = defaultdict(lambda: None)
+        for k, v in self._neighbors.items():    
+            if v is not None:
+                neighbors[k] = v
+        return neighbors
 
     @property
     def occupant(self) -> Optional[str]:
