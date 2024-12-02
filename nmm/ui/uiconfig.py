@@ -30,37 +30,38 @@ class Square:
 
 @dataclass
 class UIConfig:
-    column_widths: Tuple[int, int, int] = (250, 650, 250)
-    row_heights: Tuple[int, int, int] = (100, 600, 100)
+    column_widths: Tuple[int, int, int] = (175, 450, 175)
+    row_heights: Tuple[int, int, int] = (70, 450, 70)
 
-    skeleton_separation:int = 80
-    skeleton_thickness:int = 5
+    skeleton_separation:int = 55
+    skeleton_thickness:int = 3
     frame_rate:int = 60
 
-    background: Tuple[int, int, int] = (255, 234, 234)
+    background: Tuple[int, int, int] = 216, 217, 253
     foreground: Tuple[int, int, int] = (48, 26, 75)
 
     fonts: Dict[str, Tuple[pg.font.Font, int]] = field(default_factory=lambda: {
-        'annoucements_top': ('assets/fonts/Roboto-LightItalic.ttf', 30),
-        'annoucements_bottom': ('assets/fonts/Roboto-Light.ttf', 30),
-        'game_over': ('assets/fonts/Roboto-Bold.ttf', 40),
-        'tie': ('assets/fonts/Roboto-Bold.ttf', 40),
-        'winning': ('assets/fonts/Roboto-Bold.ttf', 40),
-        'loosing': ('assets/fonts/Roboto-Bold.ttf', 40),
-        'invalid_move': ('assets/fonts/Roboto-BoldItalic.ttf', 45),
-        'players': ('assets/fonts/Roboto-Light.ttf', 35)})
+        'annoucements_top': ('assets/fonts/Roboto-LightItalic.ttf', 25),
+        'annoucements_bottom': ('assets/fonts/Roboto-Regular.ttf', 25),
+        'game_over': ('assets/fonts/Roboto-Bold.ttf', 25),
+        'tie': ('assets/fonts/Roboto-Bold.ttf', 25),
+        'winning': ('assets/fonts/Roboto-Bold.ttf', 25),
+        'loosing': ('assets/fonts/Roboto-Bold.ttf', 25),
+        'invalid_move': ('assets/fonts/Roboto-BoldItalic.ttf', 30),
+        'players': ('assets/fonts/Roboto-Regular.ttf', 20)})
     colors: Dict[str, Tuple[int, int, int]] = field(default_factory=lambda: {
         'annoucements_top': (10, 10, 10),
         'annoucements_bottom': (230, 23, 23), 
-        'players_right': (68, 34, 32),
-        'players_left': (72, 159, 181),
+        'players_right': (132, 181, 159), #(68, 34, 32),
+        'players_left': (178, 124, 102), #(241, 127, 41), #(72, 159, 181),
         'tie': (204, 95, 0),
         'winning': (208, 37, 48),
         'loosing': (34, 111, 84),
         'game_over': (139, 0, 0),
         'invalid_move': (255, 1, 1)})
-    off_board_radius: int = 20
-    off_board_spacing: int = 50
+    off_board_radius: int = 16
+    on_board_radius: int = 12
+    off_board_spacing: int = 40
     statements: Dict[str, str] = field(default_factory=lambda: {
         'tie': random.choice(["Well, you gave it your best !",
                             "A tie !",

@@ -2,7 +2,8 @@ import unittest
 import random
 from nmm.cells import Cell
 from nmm.engine import Engine, Piece, PieceState
-from nmm.players import Player, PlayerState
+from nmm.players import Player
+from nmm.dtypes import PlayerState
 from nmm.boards import Board
 
 

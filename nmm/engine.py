@@ -4,7 +4,8 @@ from typing import Optional, Dict, Tuple, List
 from enum import Enum
 
 from nmm.boards import Board, Cell
-from nmm.players import Player, PlayerState
+from nmm.players import Player
+from nmm.dtypes import PlayerState
 from nmm.pieces import Piece, PieceState
 
 
@@ -20,7 +21,6 @@ class Engine:
 
         self._board: Board = board
         self._players: Tuple[Player, Player] = players
-        self._board.add_pieces([p.name for p in players])
         self._running: bool = False 
         self._first_player: Optional[Player] = None   
         self._current_player: Optional[Player] = None
@@ -57,75 +57,9 @@ class Engine:
 
     def pick_first_player(self, first_player):
         if first_player is None:
-                first_player = random.choice(self._players)
+            first_player = random.choice(self._players)
         self._first_player = first_player
         return self._first_player
-
-    def get_player_state(self, player:Player):
-        mills = self._board.player_mills(player)
-        active = [mill for mill in mills 
-                  if mill.still_valid and not mill.utilized]
-        if len(active) > 0:
-            return PlayerState.KILLING
-        
-        ready = self.board.ready_pieces[player.name]
-        if len(ready) > 0:
-            return PlayerState.PLACING
-        
-        placed = self.board.placed_pieces[player.name]
-        if len(placed) > 3:
-            return PlayerState.MOVING
-        elif len(placed) == 3:
-            return PlayerState.FLYING
-        elif len(placed) < 3:
-            return PlayerState.LOST
-        
-        raise RuntimeError(f'Unknown player state for {player}')
-
-    def placing_move(self, cell:Tuple[int, int, int], player:Player):
-        if self.get_player_state(player) != PlayerState.PLACING:
-            raise ValueError(f"Player {player} is not in placing state !")
-        try:
-            self._board.place(cell, player)
-        except ValueError as e:
-            raise ValueError(f"Invalid move: placing {cell} ... GAME OVER !!!")
-        
-    def killing_move(self, cell:Tuple[int, int, int], player:Player):
-        mills = self._board.player_mills(player)
-        active = [mill for mill in mills 
-                  if mill.still_valid and not mill.utilized]
-        
-        if len(active) == 0:
-            raise ValueError(f"Player {player} has no active mills !")
-        if self.get_player_state(player) != PlayerState.KILLING:
-            raise ValueError(f"Player {player} is not in killing state !")
-        
-        try:
-            assert self._board[cell].occupant == self.other_player(player).name
-            self._board.kill(cell, active[0])
-        except:
-            raise ValueError(f"Invalid move: killing {cell} ... GAME OVER !")
-
-
-    def game_over(self):
-        if len(set([self.get_player_state(player) for player in self._players]) & 
-               {PlayerState.PLACING, PlayerState.KILLING}) == 0:
-            return True
-        return False
-    
-
-    def get_winner(self):
-        if len(self.board.dead_pieces[self._players[0].name]) < \
-            len(self.board.dead_pieces[self._players[1].name]):
-            self._board.winner = self._players[0]
-            return self._players[0]
-        elif len(self.board.dead_pieces[self._players[0].name]) > \
-            len(self.board.dead_pieces[self._players[1].name]):
-            self._board.winner = self._players[1]
-            return self._players[1]
-        else:
-            self._board.winner = None
-            return None
 
 
     @property

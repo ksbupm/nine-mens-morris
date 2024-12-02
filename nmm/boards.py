@@ -274,6 +274,7 @@ class Board:
         for subset in combinations(self._cells, 3):
             if Mill.is_mill(subset) and Mill(subset) not in self._mills:
                 self._mills.add(Mill(subset))
+                print(f"[{subset}] is a MILL !")
         self._dirty_mills = False
 
     @property
@@ -355,6 +356,9 @@ class Board:
         ready = self._pieces[PieceState.READY][player]
         placed = self._pieces[PieceState.PLACED][player]
         dead = self._pieces[PieceState.DEAD][player]
+        mills = self.get_my_mills(player)
+        if any([not mill.utilized for mill in mills]):
+            return PlayerState.KILLING
         if len(ready) != 0:
             return PlayerState.PLACING
         if len(ready) == 0 and len(placed) > 3:

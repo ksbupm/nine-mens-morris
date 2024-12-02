@@ -2,38 +2,48 @@
 import sys
 import random 
 import time
+from typing import Optional
 
 import pygame as pg
 
 from nmm.engine import Engine
 from nmm.boards import Board
-from nmm.players import Player, CMDPlayer, PlayerState
+from nmm.cells import Cell
+from nmm.players import Player, CMDPlayer
+from nmm.dtypes import PlayerState
 from nmm.ui.boards import BoardUI
 from nmm.ui.uiconfig import UIConfig
 from nmm.ui.players import PlayerUI
-from nmm.agent import AIAgent
+from nmm.agent import EasyAgent, HardAgent, RandomAgent
+from nmm.players import AIPlayer
 
-class GameUI(Engine):
+class GameUI():
     def __init__(self):
-        if len(sys.argv) < 2 or sys.argv[1].lower() == 'aihu':
-            players = (AIAgent('AI Agent'), PlayerUI('You'))
-        elif sys.argv[1].lower() == 'huhu':
-            players = (PlayerUI('You'), PlayerUI('AI Agent'))
-        else:
-            raise ValueError(f'Invalid player configuration: {sys.argv[1]}')
-        
-        super().__init__(players=players,
-                         board=Board())
+        self.players = (RandomAgent('RandomAI'), PlayerUI('Badr'))
+        self.phase = 2
+
+        self.board = Board(self.players)
         self.uiconfig = UIConfig()
         self.screen = None
         self.clock = None
-        self.invalid = None
+        self.invalid_move:Optional[str] = None
+        self.selected_cell:Optional[Cell] = None
+        self.first_player = None
+        self.current_player = None
+        self.scores = {p: 0 for p in self.players}
+
+    def reset(self):
+        self.board = Board(self.players)
+        self.invalid_move = None
+        self.selected_cell = None
+        self.first_player = None
+        self.current_player = None
 
     def initialize(self):
         pg.init()
         self.screen = pg.display.set_mode((self.uiconfig.width,
                                            self.uiconfig.height))
-        pg.display.set_caption("AI381 - Course Project - 9 Men's Morris - Phase 1")
+        pg.display.set_caption(f"AI381 - Course Project - 9 Men's Morris - Phase {self.phase}")
         self.screen.fill(self.uiconfig.background)
         self.clock = pg.time.Clock()
         return self.screen, self.clock
@@ -50,33 +60,39 @@ class GameUI(Engine):
         self.draw_players_left()
 
     def draw_players_right(self):
+        name = (player := self.players[1]).name
         area = self.uiconfig.screen_rects['players_right']
         color = self.uiconfig.colors['players_right']
-        title = self.players[1].name
-        num_ready = len(self.board.ready_pieces[self.players[1].name])
-        num_dead = len(self.board.dead_pieces[self.players[1].name])
-        placed = self.board.placed_pieces[self.players[1].name]
-        self._draw_player(area, title, color, num_ready, num_dead, placed)
+        num_ready = len(self.board.get_my_ready_pieces(player))
+        num_dead = len(self.board.get_my_dead_pieces(player))
+        placed = self.board.get_my_placed_pieces(player)
+        self._draw_player(area, name, color, num_ready, num_dead, placed)
 
     def draw_players_left(self):
+        name = (player := self.players[0]).name
         area = self.uiconfig.screen_rects['players_left']
         color = self.uiconfig.colors['players_left']
-        title = self.players[0].name
-        num_ready = len(self.board.ready_pieces[self.players[0].name])
-        num_dead = len(self.board.dead_pieces[self.players[0].name])
-        placed = self.board.placed_pieces[self.players[0].name]
-        self._draw_player(area, title, color, num_ready, num_dead, placed)
+        num_ready = len(self.board.get_my_ready_pieces(player))
+        num_dead = len(self.board.get_my_dead_pieces(player))
+        placed = self.board.get_my_placed_pieces(player)
+        self._draw_player(area, name, color, num_ready, num_dead, placed)
 
-    def _draw_player(self, area: pg.Rect, title: str, color: tuple[int, int, int], num_ready: int, num_dead: int, placed: int):
-        if (self.first_player is None) or (self.current_player is not None and self.current_player.name == title):
-            rect = pg.Rect(area.centerx - 80,  area.midtop[1],  160, 80)
+    def _draw_player(self, 
+                     area: pg.Rect, 
+                     name: str, 
+                     color: tuple[int, int, int], 
+                     num_ready: int, 
+                     num_dead: int, 
+                     placed: int):
+        if (self.first_player is None) or (self.current_player is not None and self.current_player.name == name):
+            rect = pg.Rect(area.centerx - 75,  area.midtop[1],  150, 50)
             pg.draw.rect(self.screen, (255, 255, 255), rect=rect, width=0)
-            pg.draw.rect(self.screen, (0, 80, 80), rect=rect, width=5)
+            pg.draw.rect(self.screen, (0, 80, 80), rect=rect, width=3)
         font = pg.font.Font(*self.uiconfig.fonts['players'])
-        title = font.render(title, True, self.uiconfig.foreground)
-        (title_rect := title.get_rect()).centerx = area.centerx
-        title_rect.top = area.top + 20
-        self.screen.blit(title, title_rect)
+        name = font.render(name, True, self.uiconfig.foreground)
+        (title_rect := name.get_rect()).centerx = area.centerx
+        title_rect.top = area.top + 10
+        self.screen.blit(name, title_rect)
         spacing = self.uiconfig.off_board_spacing
         for i in range(num_ready):
             pg.draw.circle(
@@ -98,9 +114,16 @@ class GameUI(Engine):
                 self.screen, 
                 color, 
                 self.uiconfig.positions[tuple(piece.cell.index)], 
-                self.uiconfig.off_board_radius)
+                self.uiconfig.on_board_radius)
+        if self.selected_cell is not None:
+            idx = tuple(self.selected_cell.index) if isinstance(self.selected_cell, Cell) else tuple(self.selected_cell)
+            pg.draw.circle(
+                self.screen, 
+                (255, 255, 255, 100), 
+                self.uiconfig.positions[idx], 
+                self.uiconfig.on_board_radius + 3,
+                width=3)
         
-
     def draw_board(self):
         self.draw_skeleton()
 
@@ -136,34 +159,34 @@ class GameUI(Engine):
         area = self.uiconfig.screen_rects['annoucements_top']
         font = pg.font.Font(*self.uiconfig.fonts['annoucements_top'])
         color = self.uiconfig.colors['annoucements_top']
-        text = font.render("AI381 - Course Project - 9 Men's Morris - Phase 1", True, color)
+        text = font.render(f"AI381 - Course Project - 9 Men's Morris - Phase {self.phase}", True, color)
         (rect := text.get_rect()).center = area.center
         self.screen.blit(text, rect)
 
     def draw_announcement_bottom(self):
-        if self.game_over():
-            winner = self.get_winner()
+        over, winner = self.board.game_over(self.phase)
+        if over:
             if winner is None: # Tie
                 font = pg.font.Font(*self.uiconfig.fonts['tie'])
                 color = self.uiconfig.colors['tie']
                 text = self.uiconfig.statements['tie']
                 text = font.render(text, True, color)
-            elif winner is self.players[0]: # The AI Agent wins
+            elif winner == (p := self.players[0]):
                 font = pg.font.Font(*self.uiconfig.fonts['loosing'])
                 color = self.uiconfig.colors['loosing']
-                text = font.render(self.uiconfig.statements['loosing'], True, color)
-            elif winner is self.players[1]: # The Human Player wins
+                text = font.render(f'"{p.name}" ... WON !!!', True, color)
+            elif winner == (p := self.players[1]):
                 font = pg.font.Font(*self.uiconfig.fonts['winning'])
                 color = self.uiconfig.colors['winning']
-                text = font.render(self.uiconfig.statements['winning'], True, color)
+                text = font.render(f'"{p.name}" ... WON !!!', True, color)
             (rect := text.get_rect()).center = self.uiconfig.screen_rects['annoucements_bottom'].center
             self.screen.blit(text, rect)
 
-        elif self.invalid is not None:
+        elif self.invalid_move is not None:
             font = pg.font.Font(*self.uiconfig.fonts['invalid_move'])
             text = font.render(f"Invalid Move ... "
                                f"{self.get_player_state(self.current_player).value} "
-                               f"at {str(self.invalid)} !!!", 
+                               f"at {str(self.invalid_move)} !!!", 
                                 True, self.uiconfig.colors['invalid_move'])
             (rect := text.get_rect()).center = \
                 self.uiconfig.screen_rects['annoucements_bottom'].center
@@ -172,9 +195,9 @@ class GameUI(Engine):
         elif self.current_player is not None:
             font = pg.font.Font(*self.uiconfig.fonts['annoucements_bottom'])
             if self.current_player == self.players[1]:
-                text = font.render(f"Your Turn ... {self.get_player_state(self.current_player).value} !", True, self.uiconfig.colors['players_right'])
+                text = font.render(f"Turn of {self.current_player.name} ... {self.board.get_player_state(self.current_player).value} !", True, (35, 12, 51))
             else:
-                text = font.render(f"AI Agent's Turn ... {self.get_player_state(self.current_player).value} !", True, self.uiconfig.colors['players_left'])
+                text = font.render(f"Turn of {self.current_player.name} ... {self.board.get_player_state(self.current_player).value} !", True, (3, 83, 164))
             (rect := text.get_rect()).center = self.uiconfig.screen_rects['annoucements_bottom'].center
             self.screen.blit(text, rect)
         elif self.first_player is None:
@@ -194,7 +217,6 @@ class GameUI(Engine):
         (rect := text.get_rect()).center = (x, y + eye_offset_y)
         self.screen.blit(text, rect)
 
-
     def capture_first_player(self, event):
         if event.type == pg.MOUSEBUTTONDOWN:
             if event.button == 1:
@@ -207,68 +229,184 @@ class GameUI(Engine):
                     print(f'{self.first_player.name} are selected as the first player')
                     self.current_player = self.first_player
 
+    def switch_player(self):
+        assert self.current_player is not None, f'Cannot switch player when current player is None'
+        assert self.current_player in self.players, f'Current player must be in {self.players}'
+        self.current_player = self.players[1 - self.players.index(self.current_player)]
+        return self.current_player
+    
+    def get_player_state(self, player: Optional[PlayerUI]) -> PlayerState:
+        if player is None:
+            player = self.current_player
+        assert player is not None, f'Player cannot be None to get its state !'
+        assert player in self.players, f'Player must be in {self.players}'
+        return self.board.get_player_state(player)
+    
+    def _handle_ui_killing(self, move:Cell):
+        assert move in self.board.get_opponent_cells(self.current_player), f'Cannot kill a piece at {move} because it is not an opponent\'s piece'
+        assert isinstance(self.current_player, PlayerUI), f'Current player must be a UI player to handle killing'
+        assert self.board.get_player_state(self.current_player) == PlayerState.KILLING, f'Current player must be in killing state to handle killing'
+        mills = self.board.get_my_mills(self.current_player)
+        mills = [mill for mill in mills if not mill.utilized]
+        assert len(mills) > 0, f'{self.current_player.name} has no mills to utilize'
+        self.board.kill(move)
+        mills[0].utilized = True
+        print(f'{self.current_player.name} killed a piece at {move}')
+        new_state = self.get_player_state(self.current_player)
+        if new_state != PlayerState.KILLING:
+            self.switch_player()
+        return new_state
+    
+    def _handle_ui_placement(self, move:Cell):
+        assert move in self.board.get_empty_cells(), f'Cannot place a piece at {move} because it is not empty'
+        assert isinstance(self.current_player, PlayerUI), f'Current player must be a UI player to handle placement'
+        assert self.board.get_player_state(self.current_player) == PlayerState.PLACING, f'Current player must be in placing state to handle placement'
+        self.board.place(move, self.current_player)
+        print(f'{self.current_player.name} placed a piece at {move}')
+        new_state = self.get_player_state(self.current_player)
+        if new_state != PlayerState.KILLING:
+            self.switch_player()
+        return new_state
+
+    def _handle_ui_move_or_fly(self, move:Cell):
+        state = self.board.get_player_state(self.current_player)
+        assert move is not None, f'Move cannot be None to handle move or fly'
+        assert isinstance(self.current_player, PlayerUI), f'Current player must be a UI player to handle move or fly'
+        assert state in {PlayerState.MOVING, PlayerState.FLYING}, f'Current player must be in moving or flying state to handle move or fly'
+        assert move in self.board.get_my_cells(self.current_player) or move in self.board.get_empty_cells(), f'Move destination must be a valid cell'
+
+        if self.selected_cell is None:
+            if move in self.board.get_my_cells(self.current_player):
+                self.selected_cell = move
+            return state
+
+        if state == PlayerState.MOVING and move in self.board.get_possible_moves_from_cell(self.selected_cell):
+            self.board.move(self.selected_cell, move)
+            print(f'{self.current_player.name} moved a piece from {self.selected_cell} to {move}')
+            self.selected_cell = None
+            new_state = self.get_player_state(self.current_player)
+            if new_state != PlayerState.KILLING:
+                self.switch_player()
+            return new_state
+
+        if state == PlayerState.FLYING:            
+            self.board.fly(self.selected_cell, move)
+            print(f'{self.current_player.name} flew a piece from {self.selected_cell} to {move}')
+            self.selected_cell = None
+            new_state = self.get_player_state(self.current_player)
+            if new_state != PlayerState.KILLING:
+                self.switch_player()
+            return new_state
+        
+        return state
+
+    def _handle_ai_action(self, move:Cell, state:PlayerState):
+        assert isinstance(self.current_player, AIPlayer), f'Current player must be an AI player to handle AI move'
+        time.sleep(0.1)
+        if state == PlayerState.PLACING:
+            self.board.place(move, self.current_player)
+            new_state = self.get_player_state(self.current_player)
+            print(f'{self.current_player.name} placed a piece at {move}')
+            if new_state != PlayerState.KILLING:
+                self.switch_player()
+            return new_state
+
+        if state == PlayerState.MOVING:
+            assert isinstance(move, tuple) and len(move) == 2, f'Move must be a tuple of two cells'
+            source, destination = move
+            self.board.move(source, destination)
+            print(f'{self.current_player.name} moved a piece from {source} to {destination}')
+            new_state = self.get_player_state(self.current_player)
+            if new_state != PlayerState.KILLING:
+                self.switch_player()
+            return new_state
+
+        if state == PlayerState.FLYING:
+            assert isinstance(move, tuple) and len(move) == 2, f'Move must be a tuple of two cells'
+            source, destination = move
+            self.board.fly(source, destination)
+            print(f'{self.current_player.name} flew a piece from {source} to {destination}')
+            new_state = self.get_player_state(self.current_player)
+            if new_state != PlayerState.KILLING:
+                self.switch_player()
+            return new_state
+
+        if state == PlayerState.KILLING:
+            assert move in self.board.get_opponent_cells(self.current_player), f'Cannot kill a piece at {move} because it is not an opponent\'s piece'
+            mills = self.board.get_my_mills(self.current_player)
+            mills = [mill for mill in mills if not mill.utilized]
+            assert len(mills) > 0, f'{self.current_player.name} has no mills to utilize'
+            self.board.kill(move)
+            mills[0].utilized = True
+            new_state = self.get_player_state(self.current_player)
+            print(f'{self.current_player.name} killed a piece at {move}')
+            if new_state != PlayerState.KILLING:
+                self.switch_player()
+            return new_state
+        
+        return state
+
+
     def run(self):
         self.initialize()
         running = True
         while running:
             self.display()
             self.clock.tick(60)
+            
+            # Checking for a game over
+            over, winner = self.board.game_over(self.phase)
 
-            if isinstance(self.current_player, AIAgent) and self.invalid is None:
+            if isinstance(self.current_player, AIPlayer) and self.invalid_move is None and not over:
                 try:
-                    time.sleep(1)
                     state = self.get_player_state(self.current_player)
-                    selected_idx = self.current_player(self.board, state)
-                    if selected_idx is not None:
-                        if state == PlayerState.PLACING:
-                            self.placing_move(selected_idx, self.current_player)
-                            new_state = self.get_player_state(self.current_player)
-                            print(f'{self.current_player.name} placed a piece at {selected_idx}')
-                            if new_state != PlayerState.KILLING:
-                                self.switch_player()
-                        elif state == PlayerState.KILLING:
-                            self.killing_move(selected_idx, self.current_player)
-                            new_state = self.get_player_state(self.current_player)
-                            print(f'{self.current_player.name} killed a piece at {selected_idx}')
-                            if new_state != PlayerState.KILLING:
-                                self.switch_player()
-                except:
-                    self.invalid = selected_idx 
+                    move = self.current_player.play(self.board, state)
+                    if move is not None:
+                        self._handle_ai_action(move, state)
+                except Exception as e:
+                    print(f'Error in AI player {self.current_player.name} move {move}: {e}')
+                    self.invalid_move = move
 
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     running = False
                     break
-                
+
+                # Getting the first player
                 if self.first_player is None:
                     self.capture_first_player(event)
-
-                states = set(self.get_player_state(player) for player in self.players)
-                if len(states & {PlayerState.PLACING, PlayerState.KILLING}) == 0:
-                    continue
                 
-                if isinstance(self.current_player, PlayerUI):
-                    state = self.get_player_state(self.current_player)
-                    selected_idx = self.current_player(event, 
-                                                       self.board,
-                                                       state,
-                                                       self.uiconfig.positions_idx2rect)
-#                    raise NotImplementedError('Not implemented')
-                    if selected_idx is not None:
+                # Handling the UI player's move or fly
+                if isinstance(self.current_player, PlayerUI) and not over:
+                    move = self.current_player(event, 
+                                               self.board,
+                                               state := self.get_player_state(self.current_player),
+                                               self.uiconfig.positions_idx2rect)
+                    
+                    if move is not None:
                         if state == PlayerState.PLACING:
-                            self.placing_move(selected_idx, self.current_player)
-                            new_state = self.get_player_state(self.current_player)
-                            print(f'{self.current_player.name} placed a piece at {selected_idx}')
-                            if new_state != PlayerState.KILLING:
-                                self.switch_player()
+                            self._handle_ui_placement(move)
+                        elif state == PlayerState.MOVING or state == PlayerState.FLYING:
+                            self._handle_ui_move_or_fly(move)
                         elif state == PlayerState.KILLING:
-                            self.killing_move(selected_idx, self.current_player)
-                            new_state = self.get_player_state(self.current_player)
-                            print(f'{self.current_player.name} killed a piece at {selected_idx}')
-                            if new_state != PlayerState.KILLING:
-                                self.switch_player()
-                        else:
-                            self.switch_player()
+                            self._handle_ui_killing(move)
+
+# #                    raise NotImplementedError('Not implemented')
+#                     if selected_idx is not None:
+#                         if state == PlayerState.PLACING:
+#                             self.placing_move(selected_idx, self.current_player)
+#                             new_state = self.get_player_state(self.current_player)
+#                             print(f'{self.current_player.name} placed a piece at {selected_idx}')
+#                             if new_state != PlayerState.KILLING:
+#                                 self.switch_player()
+#                         elif state == PlayerState.KILLING:
+#                             self.killing_move(selected_idx, self.current_player)
+#                             new_state = self.get_player_state(self.current_player)
+#                             print(f'{self.current_player.name} killed a piece at {selected_idx}')
+#                             if new_state != PlayerState.KILLING:
+#                                 self.switch_player()
+#                         else:
+#                             self.switch_player()
 
 
 if __name__ == "__main__":

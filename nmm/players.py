@@ -52,16 +52,15 @@ class Player(NamedPlayer, ABC):
             raise AttributeError("name is immutable")
         return super().__setattr__(key, value)    
 
-    def __call__(self, board:Board, state:PlayerState) -> Tuple[int, int, int]:
-        return self.play(board, state)
+    def __call__(self, *args, **kwargs) -> Tuple[int, int, int]:
+        return self.play(*args, **kwargs)
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, self.__class__):
             return self.name == value.name
         elif isinstance(value, str):
             return self.name == value
-        else:
-            raise TypeError(f"Cannot compare {self.__class__.__name__} with {value.__class__.__name__}")
+        return False
     
     def __hash__(self) -> int:
         return hash(self.name)

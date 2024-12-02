@@ -10,7 +10,7 @@ class PlayerUI(Player):
     def __init__(self, name:str):
         super().__init__(name)
 
-    def __call__(self, event, board:Board, state:PlayerState, idx2rect:dict):
+    def play(self, event, board:Board, state:PlayerState, idx2rect:dict):
         selected_idx = None
         
         if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
@@ -21,9 +21,25 @@ class PlayerUI(Player):
         if selected_idx is not None:
             if state == PlayerState.PLACING:
                 if selected_idx in board.get_empty_cells():
+                    print(f'{self.name} is trying to place a piece at {selected_idx}')
                     return selected_idx
             elif state == PlayerState.KILLING:
-                if selected_idx in board.get_other_player_cells(self.name):
+                if selected_idx in board.get_opponent_cells(self.name):
+                    print(f'{self.name} is trying to kill a piece at {selected_idx}')
+                    return selected_idx
+            elif state == PlayerState.MOVING:
+                if selected_idx in board.get_my_cells(self.name):
+                    print(f'{self.name} is trying to move a piece from {selected_idx}')
+                    return selected_idx
+                if selected_idx in board.get_empty_cells():
+                    print(f'{self.name} is trying to move a piece to {selected_idx}')
+                    return selected_idx
+            elif state == PlayerState.FLYING:
+                if selected_idx in board.get_my_cells(self.name):
+                    print(f'{self.name} is trying to fly a piece from {selected_idx}')
+                    return selected_idx
+                if selected_idx in board.get_empty_cells():
+                    print(f'{self.name} is trying to fly a piece to {selected_idx}')
                     return selected_idx
         
         return None
