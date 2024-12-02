@@ -15,6 +15,7 @@ hypothesis = "^6.122.0"
 pytest = "^8.3.3"
 pytest-cov = "^6.0.0"
 coverage = "^7.6.4"
+pytest-rerunfailures = "^15.0"
 
 [tool.pytest.ini_options]
 addopts = "--cov=nmm --cov-report=term-missing --cov-report=html --cov-branch"
