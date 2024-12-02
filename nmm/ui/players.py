@@ -2,7 +2,8 @@ from typing import Callable
 
 import pygame as pg
 
-from nmm.players import Player, PlayerState
+from nmm.players import Player
+from nmm.dtypes import PlayerState
 from nmm.boards import Board
 
 class PlayerUI(Player):

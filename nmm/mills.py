@@ -87,7 +87,6 @@ class Mill:
             raise ValueError("All cells of a mill must have the same owner !")
         
         for cell in cells:
-            print(f'{cell} --> {list(cell.neighbors.values())}')
             if cell.neighbors['right'] in cells and cell.neighbors['left'] in cells:
                 return sorted(cells)
             if cell.neighbors['upper'] in cells and cell.neighbors['lower'] in cells:

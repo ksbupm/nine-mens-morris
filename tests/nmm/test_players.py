@@ -3,7 +3,8 @@ from unittest.mock import MagicMock
 from hypothesis import given, assume
 from hypothesis import strategies as st
 
-from nmm.players import Player, PlayerState, AIPlayer, CMDPlayer
+from nmm.players import Player, AIPlayer, CMDPlayer
+from nmm.dtypes import PlayerState
 
 
 class MockedPlayer(Player):

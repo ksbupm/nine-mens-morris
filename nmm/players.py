@@ -7,24 +7,11 @@ from enum import Enum, auto
 from abc import ABC, abstractmethod
 from nmm.dtypes import NamedPlayer
 from nmm.boards import Board, Cell
+from nmm.dtypes import PlayerState
 
 
 
-class PlayerState(Enum):
-    """Each player has a state that determines what they are doing.
-    PLACING: The player is placing a piece.
-    KILLING: The player is killing a piece.
-    MOVING: The player is moving a piece.
-    FLYING: The player is flying a piece.
-    LOOSING: The player is loosing a piece.
-    WINNING: The player is winning the game.
-    """
-    PLACING = "Placing"
-    KILLING = "Killing"
-    MOVING = "Moving"
-    FLYING = "Flying"
-    LOOSING = "Loosing"
-    WINNING = "Winning"
+
 
 
 class Player(NamedPlayer, ABC):
