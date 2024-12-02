@@ -9,7 +9,7 @@ from nmm.mills import Mill
 from nmm.dtypes import NamedPlayer
 from collections import defaultdict
 from nmm.pieces import Piece, PieceState
-from nmm.players import PlayerState
+from nmm.dtypes import PlayerState
 
 
 class Board:
@@ -37,7 +37,8 @@ class Board:
       - remove a piece from the board using `board.remove(cell)` (where `cell` is a `Cell` object).
       - get all empty cells using `board.get_empty_cells()`,
       - get all occupied cells using `board.get_occupied_cells()`,
-      - get all cells occupied by a given player using `board.get_player_cells(player)`.    
+      - get all cells occupied by a given player using `board.get_player_cells(player)`.  
+      - ... and many other handy functions.
 
     """
     def __init__(self, players:Tuple[str, str]):
@@ -90,13 +91,19 @@ class Board:
         return self._players[1 - self._players.index(player)]
 
     def get_my_ready_pieces(self, player:Union[NamedPlayer, str]) -> List[Piece]:
-        return self._pieces[PieceState.READY][self.check_player(player)]
+        pieces = self._pieces[PieceState.READY][self.check_player(player)]
+        assert len(pieces) <= 9, 'Something is wrong with the board !'
+        return pieces
     
     def get_my_placed_pieces(self, player:Union[NamedPlayer, str]) -> List[Piece]:
-        return self._pieces[PieceState.PLACED][self.check_player(player)]
+        pieces = self._pieces[PieceState.PLACED][self.check_player(player)]
+        assert len(pieces) <= 9, 'Something is wrong with the board !'
+        return pieces
     
     def get_my_dead_pieces(self, player:Union[NamedPlayer, str]) -> List[Piece]:
-        return self._pieces[PieceState.DEAD][self.check_player(player)]
+        pieces = self._pieces[PieceState.DEAD][self.check_player(player)]
+        assert len(pieces) <= 9, 'Something is wrong with the board !'
+        return pieces
     
     def get_my_pieces(self, player:Union[NamedPlayer, str]) -> List[Piece]:
         return sum([self.get_my_ready_pieces(player := self.check_player(player)), 
@@ -104,13 +111,19 @@ class Board:
                     self.get_my_dead_pieces(player)], [])
     
     def get_opponent_ready_pieces(self, player:Union[NamedPlayer, str]) -> List[Piece]:
-        return self._pieces[PieceState.READY][self.get_opponent(player)]
+        pieces = self._pieces[PieceState.READY][self.get_opponent(player)]
+        assert len(pieces) <= 9, 'Something is wrong with the board !'
+        return pieces
     
     def get_opponent_placed_pieces(self, player:Union[NamedPlayer, str]) -> List[Piece]:
-        return self._pieces[PieceState.PLACED][self.get_opponent(player)]
+        pieces = self._pieces[PieceState.PLACED][self.get_opponent(player)]
+        assert len(pieces) <= 9, 'Something is wrong with the board !'
+        return pieces
     
     def get_opponent_dead_pieces(self, player:Union[NamedPlayer, str]) -> List[Piece]:
-        return self._pieces[PieceState.DEAD][self.get_opponent(player)]
+        pieces = self._pieces[PieceState.DEAD][self.get_opponent(player)]
+        assert len(pieces) <= 9, 'Something is wrong with the board !'
+        return pieces
     
     def get_opponent_pieces(self, player:Union[NamedPlayer, str]) -> List[Piece]:
         return sum([self.get_opponent_ready_pieces(player := self.check_player(player)), 
@@ -118,16 +131,20 @@ class Board:
                     self.get_opponent_dead_pieces(player)], [])
     
     def get_empty_cells(self) -> List[Cell]:
-        return [cell for cell in self._cells if cell.is_empty]
+        return [cell for cell in self._cells
+                if cell.is_empty]
     
     def get_occupied_cells(self) -> List[Cell]:
-        return [cell for cell in self._cells if not cell.is_empty]
+        return [cell for cell in self._cells 
+                if not cell.is_empty]
 
     def get_my_cells(self, player:str) -> List[Cell]:
         player = self.check_player(player)
-        return [cell for cell in self._cells if cell.occupant == player]
+        return [cell for cell in self._cells
+                if not cell.is_empty and cell.occupant == player]
     
     def get_opponent_cells(self, player:str) -> List[Cell]:
+        player = self.check_player(player)
         return [cell for cell in self._cells 
                 if not cell.is_empty and cell.occupant != player]
 
@@ -329,62 +346,65 @@ class Board:
 
     @property    
     def all_placed(self) -> bool:
-        ready = self._pieces[PieceState.READY][self._players[0]]
-        ready += self._pieces[PieceState.READY][self._players[1]]
-        return len(ready) == 0
+        ready = len(self._pieces[PieceState.READY][self._players[0]]) + \
+                len(self._pieces[PieceState.READY][self._players[1]])
+        return ready == 0
     
     def get_player_state(self, player:Union[NamedPlayer, str]) -> PlayerState:
         player = self.check_player(player)
         ready = self._pieces[PieceState.READY][player]
         placed = self._pieces[PieceState.PLACED][player]
         dead = self._pieces[PieceState.DEAD][player]
-        if len(ready) == 0:
+        if len(ready) != 0:
             return PlayerState.PLACING
-        if len(placed) > 3:
+        if len(ready) == 0 and len(placed) > 3:
             return PlayerState.MOVING
-        if len(placed) == 3:
+        if len(ready) == 0 and len(placed) == 3:
             assert len(dead) == 6, 'Something is wrong with the board !'
             return PlayerState.FLYING
-        if len(placed) < 3:
+        if len(ready) == 0 and len(placed) < 3:
             assert len(dead) > 6, 'Something is wrong with the board !'
             return PlayerState.LOOSING
 
     def game_over(self, phase:int) -> Tuple[bool, Optional[str]]:
-        if phase == 1:
-            if self.all_placed:
-                d1, d2 = [self._pieces[PieceState.DEAD][p] for p in self._players]
-                p1, p2 = [self._pieces[PieceState.PLACED][p] for p in self._players]
-                if len(d1) == len(d2):
-                    assert len(p1) == len(p2), 'Something is wrong with the board !'
-                    return True, None
-                elif len(d1) < len(d2):
-                    assert len(p1) > len(p2), 'Something is wrong with the board !'
-                    return True, self._players[0]
-                else:
-                    assert len(p1) < len(p2), 'Something is wrong with the board !'
-                    return True, self._players[1]
-            return False, None
-        
-        if phase == 2:
-            if not self.all_placed:
-                return False, None
-            for player in self._players:
-                if len(self.get_my_placed_pieces(player)) <= 3:
-                    return True, self.get_opponent(player)
-                if len(self.get_possible_moves(player)) == 0:
-                    return True, self.get_opponent(player)
-            return False, None
-        
-        if phase == 3:
-            if not self.all_placed:
-                return False, None
-            for player in self._players:
-                if len(self.get_my_placed_pieces(player)) <= 2:
-                    return True, self.get_opponent(player)
-                if len(self.get_possible_moves(player)) == 0:
-                    return True, self.get_opponent(player)
-            return False, None
+        return {1: self._test_game_over_phase_1,
+                2: self._test_game_over_phase_2,
+                3: self._test_game_over_phase_3}[phase]()
 
+    def _test_game_over_phase_1(self):
+        if self.all_placed:
+            d1, d2 = [self._pieces[PieceState.DEAD][p] for p in self._players]
+            p1, p2 = [self._pieces[PieceState.PLACED][p] for p in self._players]
+            if len(d1) == len(d2):
+                assert len(p1) == len(p2), 'Something is wrong with the board !'
+                return True, None
+            elif len(d1) < len(d2):
+                assert len(p1) > len(p2), 'Something is wrong with the board !'
+                return True, self._players[0]
+            else:
+                assert len(p1) < len(p2), 'Something is wrong with the board !'
+                return True, self._players[1]
+        return False, None
+
+    def _test_game_over_phase_2(self):
+        if not self.all_placed:
+            return False, None
+        for player in self._players:
+            if len(self.get_my_placed_pieces(player)) <= 3:
+                return True, self.get_opponent(player)
+            if len(self.get_possible_moves(player)) == 0:
+                return True, self.get_opponent(player)
+        return False, None
+
+    def _test_game_over_phase_3(self):
+        if not self.all_placed:
+            return False, None
+        for player in self._players:
+            if len(self.get_my_placed_pieces(player)) <= 2:
+                return True, self.get_opponent(player)
+            if len(self.get_possible_moves(player)) == 0:
+                return True, self.get_opponent(player)
+        return False, None
 
     @property
     def is_empty(self) -> bool:
@@ -414,7 +434,7 @@ class Board:
             return item in self._cells
         if isinstance(item, (tuple, list, np.ndarray)):
             return tuple(item) in self._cells
-        return False
+        raise TypeError(f"Invalid item type: {type(item)} !") # pragma: no cover
    
     def _add_cells(self):
         for i, j, k in product([0, 1, 2], repeat=3):
@@ -446,7 +466,8 @@ class Board:
 
     def __str__(self):
         players = self.players
-        marks = {k: v for k, v in zip([None] + players, [" ", "x", "o"])}
+        # marks = {k: v for k, v in zip([None] + list(players), [" ", "x", "o"])}
+        marks = {self._players[0]: 'x', self._players[1]: 'o', None: ' '}
         marks = {cell: marks[cell.occupant] for cell in self._cells}
         line1 = marks[self[0, 0, 0]] + "--------" + marks[self[0, 0, 1]] + "--------" + marks[self[0, 0, 2]]
         line2 = "|        |        |"

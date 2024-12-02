@@ -7,14 +7,16 @@ from hypothesis import given, assume, settings
 import hypothesis.strategies as st
 from nmm.boards import Board
 from nmm.cells import Cell
-from nmm.players import Player as AbstractPlayer
+from nmm.players import Player as AbstractPlayer, PlayerState
 from nmm.pieces import PieceState, Piece
 
 
 settings.register_profile("default", deadline=5000, verbosity=Verbosity.verbose)  # Set deadline to 500ms
 settings.load_profile("default")
 
+all_cells = list(product([0, 1, 2], repeat=3))
 valid_cells = list(filter(lambda x: x[1:] != (1, 1), product([0, 1, 2], repeat=3)))
+invalid_cells = [c for c in all_cells if c not in valid_cells]
 
 
 class Player(AbstractPlayer):
@@ -433,12 +435,145 @@ class TestBoard(unittest.TestCase):
                 self.assertIsNot(p1, p2)
 
 
+    def test_is_empty(self):
+        board = Board(self.players)
+        self.assertTrue(board.is_empty)
+        board.place((0, 0, 0), self.players[0])
+        self.assertFalse(board.is_empty)
+        board.reset()
+        self.assertTrue(board.is_empty)
+
+    @given(cell=st.sampled_from(valid_cells))
+    def test_getitem_valid(self, cell):
+        board = Board(self.players)
+        self.assertIsInstance(board[cell], Cell)
+        self.assertEqual(board[cell], cell)
+        self.assertIn(board[cell], board.cells)
+
+
+    @given(cell=st.sampled_from(invalid_cells))
+    def test_getitem_invalid(self, cell):
+        board = Board(self.players)
+        self.assertIsNone(board[cell])
+        self.assertNotIn(cell, board)
+    
+    @given(cell=st.sampled_from(valid_cells))
+    def test_str_dtype_cell(self, cell):
+        board = Board(self.players)
+        self.assertIn(cell, board)
+
+    def test_str_dtype(self):
+        board = Board(self.players)
+        self.assertIsInstance(str(board), str)
+
+    @given(moves=st.integers(min_value=1, max_value=9))
+    def test_str_dtype_moves(self, moves):
+        player = random.choice(self.players)
+        board = Board(self.players)
+        board.check_mills = MagicMock(return_value=None)
+        for _ in range(moves):
+            board.place(random.choice(board.get_empty_cells()), player)
+        out = str(board)
+        self.assertEqual(sum([c == 'x' or c == 'o' for c in out]), moves)
+        self.assertEqual(str(board), repr(board))
+
+    @given(moves=st.integers(min_value=1, max_value=9))
+    def test_get_my_ready_pieces(self, moves):
+        board = Board(self.players)
+        player = random.choice(self.players)
+        count = len(board.get_my_ready_pieces(player))
+        for _ in range(moves):
+            board.place(random.choice(board.get_empty_cells()), player)
+            self.assertEqual(len(board.get_my_ready_pieces(player)), count - 1)
+            board.place(random.choice(board.get_empty_cells()), board.get_opponent(player))
+            self.assertEqual(len(board.get_my_ready_pieces(player)), count - 1)
+            count -= 1
+        self.assertEqual(len(board.get_my_ready_pieces(player)), 9 - moves)
+
+    @given(moves=st.integers(min_value=1, max_value=9))
+    def test_get_my_placed_pieces(self, moves):
+        board = Board(self.players)
+        player = random.choice(self.players)
+        count = len(board.get_my_placed_pieces(player))
+        for _ in range(moves):
+            board.place(random.choice(board.get_empty_cells()), player)
+            self.assertEqual(len(board.get_my_placed_pieces(player)), count + 1)
+            board.place(random.choice(board.get_empty_cells()), board.get_opponent(player))
+            self.assertEqual(len(board.get_my_placed_pieces(player)), count + 1)
+            count += 1
+        self.assertEqual(len(board.get_my_placed_pieces(player)), moves)
+
+    def test_game_over_phase_1_draw(self):
+        board = Board(self.players)
+        board.check_mills = MagicMock(return_value=None)
+        player = random.choice(self.players)
+        over, winner = board._test_game_over_phase_1()
+        self.assertFalse(over)
+        self.assertIsNone(winner)
+        for _ in range(17):
+            board.place(random.choice(board.get_empty_cells()), player)
+            over, winner = board._test_game_over_phase_1()
+            self.assertFalse(over)
+            self.assertIsNone(winner)
+            player = board.get_opponent(player)
+        board.place(random.choice(board.get_empty_cells()), player)
+        over, winner = board._test_game_over_phase_1()
+        self.assertTrue(over)
+        self.assertIsNone(winner) # NO KILLING WAS PERFORMED
+
+    def test_game_over_phase_1_winner(self):
+        board = Board(self.players)
+        board.check_mills = MagicMock(return_value=None)
+        player = random.choice(self.players)
+        over, winner = board._test_game_over_phase_1()
+        self.assertFalse(over)
+        self.assertIsNone(winner)
+        for _ in range(17):
+            board.place(random.choice(board.get_empty_cells()), player)
+            over, winner = board._test_game_over_phase_1()
+            self.assertFalse(over)
+            self.assertIsNone(winner)
+            player = board.get_opponent(player)
+            print(len(board.get_my_ready_pieces(player)),
+                  len(board.get_opponent_ready_pieces(player)), 'W')
+        board.place(random.choice(board.get_empty_cells()), player)
+        piece = board.kill(random.choice(board.get_occupied_cells()))
+        over, winner = board._test_game_over_phase_1()
+        self.assertTrue(over)
+        self.assertEqual(winner, board.get_opponent(piece.owner)) # NO KILLING WAS PERFORMED
+
+    def test_game_over_phase_2_1(self):
+        board = Board(self.players)
+        board.check_mills = MagicMock(return_value=None)
+        player = random.choice(self.players)
+        over, winner = board._test_game_over_phase_2()
+        self.assertFalse(over)
+        self.assertIsNone(winner)
+        for move in range(18):
+            board.place(random.choice(board.get_empty_cells()), player)
+            over, winner = board._test_game_over_phase_2()
+            self.assertFalse(over)
+            self.assertIsNone(winner)
+            if move <= 15:
+                self.assertEqual(board.get_player_state(player), PlayerState.PLACING)
+            player = board.get_opponent(player)
+        self.assertEqual(board.get_player_state(player), PlayerState.MOVING)
+        self.assertEqual(board.get_player_state(board.get_opponent(player)), PlayerState.MOVING)
+        for _ in range(5):
+            board.kill(random.choice(board.get_my_placed_pieces(player)).cell)
+            over, winner = board._test_game_over_phase_2()
+            self.assertFalse(over)
+            self.assertIsNone(winner)
+        board.kill(random.choice(board.get_my_placed_pieces(player)).cell)
+        over, winner = board._test_game_over_phase_2()
+        self.assertTrue(over)
+        self.assertEqual(winner, board.get_opponent(player))
+            
     # def test_fly_not_placed_piece(self):
     #     board = Board(self.players)
     #     board.check_mills = MagicMock(return_value=None)
     #     with self.assertRaises(ValueError):
     #         board.fly(from_cell, to_cell)
-
 
     # def test_mills(self):
     #     board = Board()
